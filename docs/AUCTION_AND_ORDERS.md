@@ -42,9 +42,9 @@ Behavior:
 
 ## Economy
 
-- If Vault economy is available, Fallen Economy uses it.
-- If Vault is missing, Fallen Economy uses internal balances from `plugins/FallenEconomy/balances.yml`.
-- Admins can use `/feconomy give <player> <amount>` with `falleneconomy.admin` when internal economy is active.
+- Fallen Economy always uses internal Essence balances from `plugins/FallenEconomy/balances.yml`.
+- If Vault is installed, Fallen Economy exposes those same balances as a Vault economy provider.
+- Admins can use `/feconomy give <player> <amount>` with `falleneconomy.admin`.
 
 ## Permissions
 

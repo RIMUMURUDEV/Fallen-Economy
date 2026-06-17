@@ -4,6 +4,9 @@ buy:
   max-price: 1000000
   max-items: 500
   default-sort: NEWEST
+sell:
+  allow-hand: true
+  allow-all: true
 auction:
   min-price: 1
   max-price: 1000000
@@ -17,5 +20,4 @@ orders:
   max-orders-per-player: 25
   default-sort: NEWEST
 internal-economy:
-  enabled-when-vault-missing: true
   starting-balance: 0

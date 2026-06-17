@@ -1,0 +1,266 @@
+next-id: 45
+items:
+  1:
+    item:
+      material: TOTEM_OF_UNDYING
+      amount: 1
+    price: 1200
+    created-at: 1781712824327
+  2:
+    item:
+      material: END_CRYSTAL
+      amount: 1
+    price: 800
+    created-at: 1781712824328
+  3:
+    item:
+      material: EXPERIENCE_BOTTLE
+      amount: 1
+    price: 75
+    created-at: 1781712824329
+  4:
+    item:
+      material: GOLDEN_APPLE
+      amount: 1
+    price: 350
+    created-at: 1781712824330
+  5:
+    item:
+      material: ENCHANTED_GOLDEN_APPLE
+      amount: 1
+    price: 3500
+    created-at: 1781712824331
+  6:
+    item:
+      material: ENDER_PEARL
+      amount: 1
+    price: 70
+    created-at: 1781712824332
+  7:
+    item:
+      material: OBSIDIAN
+      amount: 1
+    price: 45
+    created-at: 1781712824333
+  8:
+    item:
+      material: CRYING_OBSIDIAN
+      amount: 1
+    price: 65
+    created-at: 1781712824334
+  9:
+    item:
+      material: RESPAWN_ANCHOR
+      amount: 1
+    price: 650
+    created-at: 1781712824335
+  10:
+    item:
+      material: TNT
+      amount: 1
+    price: 90
+    created-at: 1781712824336
+  11:
+    item:
+      material: ARROW
+      amount: 1
+    price: 5
+    created-at: 1781712824337
+  12:
+    item:
+      material: SPECTRAL_ARROW
+      amount: 1
+    price: 12
+    created-at: 1781712824338
+  13:
+    item:
+      material: SHIELD
+      amount: 1
+    price: 250
+    created-at: 1781712824339
+  14:
+    item:
+      material: TRIDENT
+      amount: 1
+    price: 2500
+    created-at: 1781712824340
+  15:
+    item:
+      material: ELYTRA
+      amount: 1
+    price: 6000
+    created-at: 1781712824341
+  16:
+    item:
+      material: NETHERITE_INGOT
+      amount: 1
+    price: 2200
+    created-at: 1781712824342
+  17:
+    item:
+      material: NETHERITE_UPGRADE_SMITHING_TEMPLATE
+      amount: 1
+    price: 4500
+    created-at: 1781712824343
+  18:
+    item:
+      material: SHULKER_SHELL
+      amount: 1
+    price: 900
+    created-at: 1781712824344
+  19:
+    item:
+      material: HEART_OF_THE_SEA
+      amount: 1
+    price: 1800
+    created-at: 1781712824345
+  20:
+    item:
+      material: BREEZE_ROD
+      amount: 1
+    price: 500
+    created-at: 1781712824346
+  21:
+    item:
+      material: WIND_CHARGE
+      amount: 1
+    price: 35
+    created-at: 1781712824347
+  22:
+    item:
+      material: MACE
+      amount: 1
+    price: 7500
+    created-at: 1781712824348
+  23:
+    item:
+      material: BLACK_HARNESS
+      amount: 1
+    price: 900
+    created-at: 1781712824349
+  24:
+    item:
+      material: BLUE_HARNESS
+      amount: 1
+    price: 900
+    created-at: 1781712824350
+  25:
+    item:
+      material: BROWN_HARNESS
+      amount: 1
+    price: 900
+    created-at: 1781712824351
+  26:
+    item:
+      material: CYAN_HARNESS
+      amount: 1
+    price: 900
+    created-at: 1781712824352
+  27:
+    item:
+      material: GRAY_HARNESS
+      amount: 1
+    price: 900
+    created-at: 1781712824353
+  28:
+    item:
+      material: GREEN_HARNESS
+      amount: 1
+    price: 900
+    created-at: 1781712824354
+  29:
+    item:
+      material: LIGHT_BLUE_HARNESS
+      amount: 1
+    price: 900
+    created-at: 1781712824355
+  30:
+    item:
+      material: LIGHT_GRAY_HARNESS
+      amount: 1
+    price: 900
+    created-at: 1781712824356
+  31:
+    item:
+      material: LIME_HARNESS
+      amount: 1
+    price: 900
+    created-at: 1781712824357
+  32:
+    item:
+      material: MAGENTA_HARNESS
+      amount: 1
+    price: 900
+    created-at: 1781712824358
+  33:
+    item:
+      material: ORANGE_HARNESS
+      amount: 1
+    price: 900
+    created-at: 1781712824359
+  34:
+    item:
+      material: PINK_HARNESS
+      amount: 1
+    price: 900
+    created-at: 1781712824360
+  35:
+    item:
+      material: PURPLE_HARNESS
+      amount: 1
+    price: 900
+    created-at: 1781712824361
+  36:
+    item:
+      material: RED_HARNESS
+      amount: 1
+    price: 900
+    created-at: 1781712824362
+  37:
+    item:
+      material: WHITE_HARNESS
+      amount: 1
+    price: 900
+    created-at: 1781712824363
+  38:
+    item:
+      material: YELLOW_HARNESS
+      amount: 1
+    price: 900
+    created-at: 1781712824364
+  39:
+    item:
+      material: GOLDEN_CARROT
+      amount: 1
+    price: 40
+    created-at: 1781712824365
+  40:
+    item:
+      material: COOKED_BEEF
+      amount: 1
+    price: 20
+    created-at: 1781712824366
+  41:
+    item:
+      material: FIREWORK_ROCKET
+      amount: 1
+    price: 35
+    created-at: 1781712824367
+  42:
+    item:
+      material: SPLASH_POTION
+      amount: 1
+    price: 180
+    created-at: 1781712824368
+  43:
+    item:
+      material: POTION
+      amount: 1
+    price: 120
+    created-at: 1781712824369
+  44:
+    item:
+      material: TIPPED_ARROW
+      amount: 1
+    price: 20
+    created-at: 1781712824370

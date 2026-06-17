@@ -1,63 +1,52 @@
 # Installation
 
-Target server: Paper `1.21.11`.
+Target server: Paper `1.21.11` with Java `21`.
 
 ## Required Plugins
 
-- EconomyShopGUI v6+.
-- Optional Vault-compatible economy provider. If Vault is missing, `FallenEconomy.jar` uses internal balances.
-- Permission plugin, recommended: LuckPerms.
+- `FallenEconomy.jar`
+- Optional: Vault, only for compatibility with other plugins that use Vault economy.
+- Optional but recommended: LuckPerms.
 
-## Before Installing
-
-Remove the old SellGUI plugin if it conflicts with EconomyShopGUI sell commands:
-
-- remove the old SellGUI `.jar` from `plugins/`
-- remove or archive the old SellGUI config folder
-- restart the server after plugin changes
+EconomyShopGUI and a separate economy provider are not required.
 
 ## Copy Files
 
-Copy these paths into the server root:
+Copy the contents of:
 
 ```text
-server-root/plugins/EconomyShopGUI/sections -> plugins/EconomyShopGUI/sections
-server-root/plugins/EconomyShopGUI/shops    -> plugins/EconomyShopGUI/shops
-server-root/plugins/FallenEconomy.jar        -> plugins/FallenEconomy.jar
-server-root/commands.yml                    -> commands.yml
+server-root/plugins/
 ```
 
-If `commands.yml` already exists, merge the `aliases:` section instead of replacing unrelated aliases.
+into the server `plugins/` folder.
 
-## Reload
-
-Use one of these:
+Included:
 
 ```text
-/sreload
+plugins/FallenEconomy.jar
+plugins/FallenEconomy/config.yml
+plugins/FallenEconomy/buy-shop.yml
+plugins/FallenEconomy/sell-values.yml
 ```
-
-or fully restart the server. Restarting is safer after adding/removing plugins.
 
 ## LuckPerms Baseline
 
 ```text
-/lp group default permission set EconomyShopGUI.shop true
-/lp group default permission set EconomyShopGUI.shop.all true
-/lp group default permission set EconomyShopGUI.sellall true
-/lp group default permission set EconomyShopGUI.sellall.all true
-/lp group default permission set EconomyShopGUI.sellallitem true
-/lp group default permission set EconomyShopGUI.sellallitem.all true
-/lp group default permission set EconomyShopGUI.sellallhand true
-/lp group default permission set EconomyShopGUI.sellallhand.all true
-/lp group default permission set EconomyShopGUI.sellgui true
-/lp group default permission set EconomyShopGUI.sellgui.all true
+/lp group default permission set falleneconomy.buy true
+/lp group default permission set falleneconomy.sell true
+/lp group default permission set falleneconomy.balance true
+/lp group default permission set falleneconomy.pay true
+/lp group default permission set falleneconomy.ah true
+/lp group default permission set falleneconomy.ah.sell true
+/lp group default permission set falleneconomy.order true
+/lp group default permission set falleneconomy.order.create true
 ```
 
-Optional admin/internal-balance permissions:
+Admin permissions:
 
 ```text
 /lp group admin permission set falleneconomy.admin true
+/lp group admin permission set falleneconomy.buy.config true
 ```
 
 ## Verification
@@ -67,17 +56,10 @@ After install, test:
 ```text
 /shop
 /sell
-/buy
-/buy config
+/sell hand
+/sell all
+/balance
+/pay <player> <amount>
 /ah
 /order
 ```
-
-Expected behavior:
-
-- `/shop` opens buy-only categories.
-- `/sell` opens the sell GUI or sell command alias.
-- `/buy` opens Fallen configurable buy shop.
-- `/buy config` opens admin buy-shop configuration.
-- `/ah` opens Fallen auction house.
-- `/order` opens Fallen buy orders.

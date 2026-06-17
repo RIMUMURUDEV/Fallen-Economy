@@ -1,6 +1,6 @@
 # Regenerating Fallen Economy
 
-Use this when changing prices, updating the Paper jar, or rebuilding the EconomyShopGUI files.
+Use this when changing prices, updating the Paper jar, or rebuilding native Fallen Economy data files.
 
 ## Command
 
@@ -12,8 +12,8 @@ node tools/generate_fallen_shop_template.mjs
 
 The generator rebuilds:
 
-- `Fallen Economy/server-root/plugins/EconomyShopGUI/sections`
-- `Fallen Economy/server-root/plugins/EconomyShopGUI/shops`
+- `Fallen Economy/server-root/plugins/FallenEconomy/buy-shop.yml`
+- `Fallen Economy/server-root/plugins/FallenEconomy/sell-values.yml`
 - `Fallen Economy/server-root/commands.yml`
 - `Fallen Economy/docs`
 
