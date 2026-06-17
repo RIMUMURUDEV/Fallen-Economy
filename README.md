@@ -1,24 +1,20 @@
 # Fallen Economy Plugin
 
-Custom Paper `1.21.11` plugin for the Fallen Economy package.
+Standalone Paper `1.21.11` economy plugin for the Fallen Economy package.
 
-It provides a lightweight auction house and buy-order system without needing a third-party auction plugin. If Vault is installed and has an economy provider, Fallen Economy uses it. If Vault is missing, the plugin falls back to internal `Essence` balances.
+`FallenEconomy.jar` provides Essence balances, native `/shop`, native `/sell`, auctions, and buy orders without EconomyShopGUI or an external economy provider. Vault is optional compatibility only: if `Vault.jar` is installed, Fallen Economy exposes its internal Essence balances as a Vault economy provider for other plugins.
 
 ## Features
 
-- `/buy` configurable server buy shop
+- `/shop` and `/buy` native buy-only server shop
 - `/buy config` admin editor for adding/removing buy-shop items
-- buy-shop prices stored directly in the active currency
-- `/ah` auction house GUI
-- `/ah sell <price>` for listing the held item stack
-- auction purchase confirmation GUI
-- auction price limits, listing limits, and sorting
-- `/order` buy-order GUI
-- `/order create <unitPrice> <amount>` for funded buy orders
-- `/order fill <id> [amount]` for selling matching held items into orders
-- Vault economy support
-- internal balance fallback and `/feconomy` admin tools
-- YAML persistence for auctions, orders, and internal balances
+- `/sell`, `/sell hand`, and `/sell all` native selling
+- `/balance`, `/bal`, `/money`, and `/pay`
+- `/ah` auction house with `/ah sell <price>`
+- `/order` buy-order GUI and funded item orders
+- internal Essence balances stored in `balances.yml`
+- optional Vault provider registration
+- YAML persistence for shop, sell values, auctions, orders, and balances
 
 ## Documentation
 
@@ -27,6 +23,7 @@ It provides a lightweight auction house and buy-order system without needing a t
 - [Permissions](docs/PERMISSIONS.md)
 - [Configuration](docs/CONFIGURATION.md)
 - [Buy Shop](docs/BUY_SHOP.md)
+- [Sell Values](docs/SELL_VALUES.md)
 - [Auction House](docs/AUCTION_HOUSE.md)
 - [Buy Orders](docs/BUY_ORDERS.md)
 - [Economy](docs/ECONOMY.md)

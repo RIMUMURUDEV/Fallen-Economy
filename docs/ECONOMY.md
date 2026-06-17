@@ -1,47 +1,37 @@
 # Economy
 
-Fallen Economy has two economy modes.
+Fallen Economy always uses its own internal Essence balances.
 
-## Vault Mode
-
-If Vault and a Vault-compatible economy provider are available, the plugin uses Vault.
-
-Startup log:
-
-```text
-[FallenEconomy] Using Vault economy for Fallen Economy.
-```
-
-In Vault mode:
-
-- `/ah` purchases withdraw from the buyer through Vault
-- auction sellers are paid through Vault
-- order creators fund escrow through Vault
-- order fillers are paid through Vault
-- `/feconomy` internal-balance commands are not used
-
-## Internal Balance Mode
-
-If Vault is missing and internal fallback is enabled:
-
-```yaml
-internal-economy:
-  enabled-when-vault-missing: true
-```
-
-the plugin uses:
+Balances are stored in:
 
 ```text
 plugins/FallenEconomy/balances.yml
 ```
 
-Startup log:
+Startup log without Vault:
 
 ```text
-[FallenEconomy] Vault economy not found. Using Fallen internal balances.
+[FallenEconomy] Using Fallen internal Essence balances.
+[FallenEconomy] Vault not found. Running standalone without Vault compatibility.
 ```
 
-Admin commands:
+Startup log with Vault:
+
+```text
+[FallenEconomy] Using Fallen internal Essence balances.
+[FallenEconomy] Registered Fallen Economy as a Vault economy provider.
+```
+
+## Player Commands
+
+```text
+/balance
+/bal
+/money
+/pay <player> <amount>
+```
+
+## Admin Commands
 
 ```text
 /feconomy balance <player>
@@ -65,13 +55,8 @@ internal-economy:
 
 This is not written to disk until their balance changes.
 
-## Disabling Internal Fallback
+## Vault Compatibility
 
-Set:
+Vault is optional. If `Vault.jar` is installed, Fallen Economy registers itself as a Vault economy provider so other plugins can read/write Essence through Vault.
 
-```yaml
-internal-economy:
-  enabled-when-vault-missing: false
-```
-
-If Vault is unavailable, transactions will fail. This is useful if you want to force a real economy provider.
+Vault does not replace the internal economy. `balances.yml` remains the source of truth.

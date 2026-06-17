@@ -4,10 +4,10 @@
 
 - Paper `1.21.11`
 - Java `21`
-- Optional: Vault plus an economy provider
+- Optional: Vault, only if other plugins need Vault economy compatibility
 - Optional but recommended: LuckPerms
 
-Vault is not required for basic testing. When Vault is missing, Fallen Economy uses its internal balance file.
+EconomyShopGUI and a separate economy provider are not required.
 
 ## Install The Plugin
 
@@ -21,30 +21,31 @@ Start the server once so the plugin creates:
 
 ```text
 plugins/FallenEconomy/config.yml
+plugins/FallenEconomy/buy-shop.yml
+plugins/FallenEconomy/sell-values.yml
 plugins/FallenEconomy/auctions.yml
 plugins/FallenEconomy/orders.yml
 plugins/FallenEconomy/balances.yml
 ```
 
-Then stop the server before editing config values.
+Then stop the server before editing config or data files.
 
 ## Recommended Setup Order
 
 1. Install `FallenEconomy.jar`.
 2. Start the server once.
 3. Stop the server.
-4. Edit `plugins/FallenEconomy/config.yml`.
+4. Edit `plugins/FallenEconomy/config.yml`, `buy-shop.yml`, or `sell-values.yml` if needed.
 5. Add permissions with LuckPerms.
 6. Start the server again.
-7. Test `/ah`, `/ah sell <price>`, `/order`, and `/order create <unitPrice> <amount>`.
+7. Test `/shop`, `/sell`, `/balance`, `/pay`, `/ah`, and `/order`.
 
 ## Package Setup
 
-When using the full Fallen Economy package, copy:
+When using the full Fallen Economy package, copy the contents of:
 
 ```text
-server-root/plugins/FallenEconomy.jar        -> plugins/FallenEconomy.jar
-server-root/plugins/FallenEconomy/config.yml -> plugins/FallenEconomy/config.yml
+server-root/plugins/
 ```
 
-The full package also includes EconomyShopGUI configs, but this plugin can run by itself.
+into the server `plugins/` folder.

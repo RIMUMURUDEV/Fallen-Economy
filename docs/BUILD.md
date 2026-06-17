@@ -25,6 +25,9 @@ Output:
 
 ```text
 Fallen Economy\server-root\plugins\FallenEconomy.jar
+Fallen Economy\server-root\plugins\FallenEconomy\config.yml
+Fallen Economy\server-root\plugins\FallenEconomy\buy-shop.yml
+Fallen Economy\server-root\plugins\FallenEconomy\sell-values.yml
 fallen-economy-plugin\target\FallenEconomy.jar
 ```
 

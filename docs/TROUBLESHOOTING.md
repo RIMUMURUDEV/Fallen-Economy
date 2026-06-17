@@ -9,7 +9,7 @@ Check:
 - `FallenEconomy.jar` is in `plugins/`
 - console does not show `UnsupportedClassVersionError`
 
-## `/buy`, `/ah`, Or `/order` Is Unknown
+## `/shop`, `/sell`, `/buy`, `/ah`, Or `/order` Is Unknown
 
 Make sure:
 
@@ -22,7 +22,9 @@ Expected command owners:
 ```text
 /ah      -> FallenEconomy.jar
 /auction -> FallenEconomy.jar alias
+/shop    -> FallenEconomy.jar
 /buy     -> FallenEconomy.jar
+/sell    -> FallenEconomy.jar
 /order   -> FallenEconomy.jar
 /orders  -> FallenEconomy.jar alias
 ```
@@ -42,21 +44,30 @@ Check:
 
 - player has `falleneconomy.buy`
 - player has enough balance
-- Vault/internal economy is working
+- internal Essence balances are working
 - item still exists in `buy-shop.yml`
 
-## Purchases Fail
+## Sell Fails
 
-If using Vault:
+Check:
 
-- install Vault
-- install a Vault-compatible economy provider
-- check startup log for `Using Vault economy`
+- player has `falleneconomy.sell`
+- item material exists in `sell-values.yml`
+- `/sell all` only scans storage inventory, not armor/offhand
 
-If using internal economy:
+## Purchases Or Payments Fail
 
-- keep `internal-economy.enabled-when-vault-missing: true`
-- give test balance with `/feconomy give <player> <amount>`
+Fallen Economy always uses internal Essence balances. Give test balance with:
+
+```text
+/feconomy give <player> <amount>
+```
+
+If Vault is installed, check for:
+
+```text
+[FallenEconomy] Registered Fallen Economy as a Vault economy provider.
+```
 
 ## Orders Cannot Be Created
 
@@ -93,6 +104,8 @@ Stop the server before editing:
 plugins/FallenEconomy/auctions.yml
 plugins/FallenEconomy/orders.yml
 plugins/FallenEconomy/balances.yml
+plugins/FallenEconomy/buy-shop.yml
+plugins/FallenEconomy/sell-values.yml
 ```
 
 Then start the server again.

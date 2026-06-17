@@ -2,6 +2,7 @@ package dev.fallen.economy;
 
 import java.io.File;
 import java.lang.reflect.Method;
+import java.lang.reflect.Proxy;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -32,23 +33,26 @@ import org.bukkit.inventory.InventoryHolder;
 import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
-import org.bukkit.plugin.RegisteredServiceProvider;
+import org.bukkit.plugin.ServicePriority;
 import org.bukkit.plugin.java.JavaPlugin;
 
 public final class FallenEconomyPlugin extends JavaPlugin implements Listener, TabExecutor {
   private final Map<Integer, AuctionListing> auctions = new LinkedHashMap<>();
   private final Map<Integer, BuyOrder> orders = new LinkedHashMap<>();
   private final Map<Integer, BuyShopItem> buyShopItems = new LinkedHashMap<>();
+  private final Map<Material, Double> sellValues = new LinkedHashMap<>();
   private final Map<UUID, SortMode> auctionSorts = new HashMap<>();
   private final Map<UUID, SortMode> orderSorts = new HashMap<>();
   private final Map<UUID, SortMode> buySorts = new HashMap<>();
   private final Map<UUID, ConfirmData> confirmations = new HashMap<>();
 
   private File buyShopFile;
+  private File sellValuesFile;
   private File auctionsFile;
   private File ordersFile;
   private File balancesFile;
   private EconomyBridge economy;
+  private VaultCompatibilityHook vaultHook;
   private int nextBuyShopId = 1;
   private int nextAuctionId = 1;
   private int nextOrderId = 1;
@@ -60,21 +64,36 @@ public final class FallenEconomyPlugin extends JavaPlugin implements Listener, T
     currencyName = getConfig().getString("currency-name", "Essence");
 
     buyShopFile = new File(getDataFolder(), "buy-shop.yml");
+    sellValuesFile = new File(getDataFolder(), "sell-values.yml");
     auctionsFile = new File(getDataFolder(), "auctions.yml");
     ordersFile = new File(getDataFolder(), "orders.yml");
     balancesFile = new File(getDataFolder(), "balances.yml");
 
+    saveBundledDataFile("buy-shop.yml");
+    saveBundledDataFile("sell-values.yml");
     economy = EconomyBridge.create(this);
+    if (economy instanceof InternalEconomyBridge internal) {
+      vaultHook = VaultCompatibilityHook.tryRegister(this, internal, currencyName);
+    }
     loadBuyShop();
+    loadSellValues();
     loadAuctions();
     loadOrders();
 
+    Objects.requireNonNull(getCommand("shop")).setExecutor(this);
+    Objects.requireNonNull(getCommand("shop")).setTabCompleter(this);
     Objects.requireNonNull(getCommand("buy")).setExecutor(this);
     Objects.requireNonNull(getCommand("buy")).setTabCompleter(this);
+    Objects.requireNonNull(getCommand("sell")).setExecutor(this);
+    Objects.requireNonNull(getCommand("sell")).setTabCompleter(this);
     Objects.requireNonNull(getCommand("ah")).setExecutor(this);
     Objects.requireNonNull(getCommand("ah")).setTabCompleter(this);
     Objects.requireNonNull(getCommand("order")).setExecutor(this);
     Objects.requireNonNull(getCommand("order")).setTabCompleter(this);
+    Objects.requireNonNull(getCommand("balance")).setExecutor(this);
+    Objects.requireNonNull(getCommand("balance")).setTabCompleter(this);
+    Objects.requireNonNull(getCommand("pay")).setExecutor(this);
+    Objects.requireNonNull(getCommand("pay")).setTabCompleter(this);
     Objects.requireNonNull(getCommand("feconomy")).setExecutor(this);
     Objects.requireNonNull(getCommand("feconomy")).setTabCompleter(this);
     Bukkit.getPluginManager().registerEvents(this, this);
@@ -85,15 +104,20 @@ public final class FallenEconomyPlugin extends JavaPlugin implements Listener, T
     saveBuyShop();
     saveAuctions();
     saveOrders();
+    if (vaultHook != null) vaultHook.unregister();
     if (economy instanceof InternalEconomyBridge internal) internal.save();
   }
 
   @Override
   public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
     String name = command.getName().toLowerCase(Locale.ROOT);
+    if (name.equals("shop")) return handleBuyCommand(sender, args);
     if (name.equals("buy")) return handleBuyCommand(sender, args);
+    if (name.equals("sell")) return handleSellCommand(sender, args);
     if (name.equals("ah")) return handleAuctionCommand(sender, args);
     if (name.equals("order")) return handleOrderCommand(sender, args);
+    if (name.equals("balance")) return handleBalanceCommand(sender);
+    if (name.equals("pay")) return handlePayCommand(sender, args);
     if (name.equals("feconomy")) return handleAdminEconomyCommand(sender, args);
     return false;
   }
@@ -204,6 +228,103 @@ public final class FallenEconomyPlugin extends JavaPlugin implements Listener, T
         return true;
       }
     }
+  }
+
+  private boolean handleSellCommand(CommandSender sender, String[] args) {
+    if (!(sender instanceof Player player)) {
+      sender.sendMessage(color("&cOnly players can use sell commands."));
+      return true;
+    }
+    if (!player.hasPermission("falleneconomy.sell")) {
+      player.sendMessage(color("&cYou do not have permission."));
+      return true;
+    }
+    if (args.length == 0) {
+      openSellMenu(player, 0);
+      return true;
+    }
+    switch (args[0].toLowerCase(Locale.ROOT)) {
+      case "hand" -> {
+        if (!getConfig().getBoolean("sell.allow-hand", true)) {
+          player.sendMessage(color("&c/sell hand is disabled."));
+          return true;
+        }
+        sellHand(player);
+        return true;
+      }
+      case "all" -> {
+        if (!getConfig().getBoolean("sell.allow-all", true)) {
+          player.sendMessage(color("&c/sell all is disabled."));
+          return true;
+        }
+        sellAll(player);
+        return true;
+      }
+      case "help" -> {
+        sendSellHelp(player);
+        return true;
+      }
+      default -> {
+        Integer page = parseInt(args[0]);
+        if (page != null) openSellMenu(player, Math.max(0, page - 1));
+        else sendSellHelp(player);
+        return true;
+      }
+    }
+  }
+
+  private boolean handleBalanceCommand(CommandSender sender) {
+    if (!(sender instanceof Player player)) {
+      sender.sendMessage(color("&cOnly players can use balance commands."));
+      return true;
+    }
+    if (!player.hasPermission("falleneconomy.balance")) {
+      player.sendMessage(color("&cYou do not have permission."));
+      return true;
+    }
+    player.sendMessage(color("&aBalance: &f" + format(economy.balance(player)) + " " + currencyName));
+    return true;
+  }
+
+  private boolean handlePayCommand(CommandSender sender, String[] args) {
+    if (!(sender instanceof Player player)) {
+      sender.sendMessage(color("&cOnly players can use pay commands."));
+      return true;
+    }
+    if (!player.hasPermission("falleneconomy.pay")) {
+      player.sendMessage(color("&cYou do not have permission."));
+      return true;
+    }
+    if (args.length < 2) {
+      player.sendMessage(color("&eUsage: /pay <player> <amount>"));
+      return true;
+    }
+    Player target = Bukkit.getPlayerExact(args[0]);
+    if (target == null) {
+      player.sendMessage(color("&cThat player is not online."));
+      return true;
+    }
+    if (target.getUniqueId().equals(player.getUniqueId())) {
+      player.sendMessage(color("&cYou cannot pay yourself."));
+      return true;
+    }
+    Double amount = parseMoney(args[1]);
+    if (amount == null) {
+      player.sendMessage(color("&cInvalid amount."));
+      return true;
+    }
+    if (!economy.has(player, amount)) {
+      player.sendMessage(color("&cYou need &f" + format(amount) + " " + currencyName + "&c."));
+      return true;
+    }
+    if (!economy.withdraw(player, amount)) {
+      player.sendMessage(color("&cPayment failed."));
+      return true;
+    }
+    economy.deposit(target, amount);
+    player.sendMessage(color("&aPaid &f" + target.getName() + " " + format(amount) + " " + currencyName + "&a."));
+    target.sendMessage(color("&aReceived &f" + format(amount) + " " + currencyName + " &afrom &f" + player.getName() + "&a."));
+    return true;
   }
 
   private boolean handleAuctionCommand(CommandSender sender, String[] args) {
@@ -377,13 +498,9 @@ public final class FallenEconomyPlugin extends JavaPlugin implements Listener, T
       sender.sendMessage(color("&e/feconomy give <player> <amount>"));
       return true;
     }
-    if (!(economy instanceof InternalEconomyBridge internal)) {
-      sender.sendMessage(color("&cInternal balances are disabled because Vault economy is active."));
-      return true;
-    }
     if (args[0].equalsIgnoreCase("balance") && args.length >= 2) {
       OfflinePlayer target = Bukkit.getOfflinePlayer(args[1]);
-      sender.sendMessage(color("&a" + target.getName() + ": &f" + format(internal.balance(target)) + " " + currencyName));
+      sender.sendMessage(color("&a" + target.getName() + ": &f" + format(economy.balance(target)) + " " + currencyName));
       return true;
     }
     if (args[0].equalsIgnoreCase("give") && args.length >= 3) {
@@ -393,7 +510,7 @@ public final class FallenEconomyPlugin extends JavaPlugin implements Listener, T
         sender.sendMessage(color("&cInvalid amount."));
         return true;
       }
-      internal.deposit(target, amount);
+      economy.deposit(target, amount);
       sender.sendMessage(color("&aGave &f" + format(amount) + " " + currencyName + " &ato &f" + target.getName() + "&a."));
       return true;
     }
@@ -640,6 +757,69 @@ public final class FallenEconomyPlugin extends JavaPlugin implements Listener, T
     buyer.sendMessage(color("&aBought &f" + shopItem.item.getAmount() + "x " + niceMaterial(shopItem.item.getType()) + " &afor &f" + format(shopItem.price) + " " + currencyName + "&a."));
   }
 
+  private void sellHand(Player player) {
+    ItemStack hand = player.getInventory().getItemInMainHand();
+    if (hand.getType().isAir() || hand.getAmount() <= 0) {
+      player.sendMessage(color("&cHold the item stack you want to sell."));
+      return;
+    }
+    double unitValue = sellValue(hand.getType());
+    if (unitValue <= 0) {
+      player.sendMessage(color("&c" + niceMaterial(hand.getType()) + " cannot be sold."));
+      return;
+    }
+    int amount = hand.getAmount();
+    double total = unitValue * amount;
+    player.getInventory().setItemInMainHand(null);
+    economy.deposit(player, total);
+    player.sendMessage(color("&aSold &f" + amount + "x " + niceMaterial(hand.getType()) + " &afor &f" + format(total) + " " + currencyName + "&a."));
+  }
+
+  private void sellAll(Player player) {
+    ItemStack[] contents = player.getInventory().getStorageContents();
+    double total = 0;
+    int stacks = 0;
+    int items = 0;
+    for (int slot = 0; slot < contents.length; slot++) {
+      ItemStack item = contents[slot];
+      if (item == null || item.getType().isAir() || item.getAmount() <= 0) continue;
+      double unitValue = sellValue(item.getType());
+      if (unitValue <= 0) continue;
+      total += unitValue * item.getAmount();
+      items += item.getAmount();
+      stacks++;
+      contents[slot] = null;
+    }
+    if (total <= 0) {
+      player.sendMessage(color("&cNo sellable items found in your inventory."));
+      return;
+    }
+    player.getInventory().setStorageContents(contents);
+    economy.deposit(player, total);
+    player.sendMessage(color("&aSold &f" + items + " items &7(" + stacks + " stacks)&a for &f" + format(total) + " " + currencyName + "&a."));
+  }
+
+  private void sellAllMaterial(Player player, Material material) {
+    double unitValue = sellValue(material);
+    if (unitValue <= 0) return;
+    ItemStack[] contents = player.getInventory().getStorageContents();
+    int amount = 0;
+    for (int slot = 0; slot < contents.length; slot++) {
+      ItemStack item = contents[slot];
+      if (item == null || item.getType() != material) continue;
+      amount += item.getAmount();
+      contents[slot] = null;
+    }
+    if (amount <= 0) {
+      player.sendMessage(color("&cYou do not have any " + niceMaterial(material) + " to sell."));
+      return;
+    }
+    player.getInventory().setStorageContents(contents);
+    double total = amount * unitValue;
+    economy.deposit(player, total);
+    player.sendMessage(color("&aSold &f" + amount + "x " + niceMaterial(material) + " &afor &f" + format(total) + " " + currencyName + "&a."));
+  }
+
   private void openBuyMenu(Player player, int page) {
     List<BuyShopItem> sorted = sortedBuyShop(player);
     int maxPage = Math.max(0, (sorted.size() - 1) / 45);
@@ -655,6 +835,25 @@ public final class FallenEconomyPlugin extends JavaPlugin implements Listener, T
     }
     inv.setItem(45, navItem(Material.ARROW, "&ePrevious Page"));
     inv.setItem(49, navItem(Material.HOPPER, "&bSort: &f" + buySort(player).id));
+    inv.setItem(53, navItem(Material.ARROW, "&eNext Page"));
+    player.openInventory(inv);
+  }
+
+  private void openSellMenu(Player player, int page) {
+    List<Map.Entry<Material, Double>> sorted = sortedSellValues();
+    int maxPage = Math.max(0, (sorted.size() - 1) / 45);
+    page = Math.max(0, Math.min(page, maxPage));
+    PagedHolder holder = new PagedHolder(MenuType.SELL, page);
+    Inventory inv = Bukkit.createInventory(holder, 54, color("&8Sell Values &7" + (page + 1) + "/" + (maxPage + 1)));
+    holder.inventory = inv;
+    int start = page * 45;
+    for (int slot = 0; slot < 45 && start + slot < sorted.size(); slot++) {
+      Map.Entry<Material, Double> entry = sorted.get(start + slot);
+      holder.materialSlots.put(slot, entry.getKey());
+      inv.setItem(slot, sellIcon(entry.getKey(), entry.getValue()));
+    }
+    inv.setItem(45, navItem(Material.ARROW, "&ePrevious Page"));
+    inv.setItem(49, navItem(Material.EMERALD, "&b/sell hand &7or &b/sell all"));
     inv.setItem(53, navItem(Material.ARROW, "&eNext Page"));
     player.openInventory(inv);
   }
@@ -743,6 +942,7 @@ public final class FallenEconomyPlugin extends JavaPlugin implements Listener, T
       if (slot == 45) {
         if (paged.type == MenuType.AUCTION) openAuctionMenu(player, paged.page - 1);
         else if (paged.type == MenuType.ORDERS) openOrdersMenu(player, paged.page - 1);
+        else if (paged.type == MenuType.SELL) openSellMenu(player, paged.page - 1);
         else if (paged.type == MenuType.BUY) openBuyMenu(player, paged.page - 1);
         else openBuyConfigMenu(player, paged.page - 1);
         return;
@@ -750,16 +950,24 @@ public final class FallenEconomyPlugin extends JavaPlugin implements Listener, T
       if (slot == 53) {
         if (paged.type == MenuType.AUCTION) openAuctionMenu(player, paged.page + 1);
         else if (paged.type == MenuType.ORDERS) openOrdersMenu(player, paged.page + 1);
+        else if (paged.type == MenuType.SELL) openSellMenu(player, paged.page + 1);
         else if (paged.type == MenuType.BUY) openBuyMenu(player, paged.page + 1);
         else openBuyConfigMenu(player, paged.page + 1);
         return;
       }
       if (slot == 49) {
-        if (paged.type == MenuType.BUY_CONFIG) return;
+        if (paged.type == MenuType.BUY_CONFIG || paged.type == MenuType.SELL) return;
         cycleSort(player, paged.type);
         if (paged.type == MenuType.AUCTION) openAuctionMenu(player, 0);
         else if (paged.type == MenuType.ORDERS) openOrdersMenu(player, 0);
         else openBuyMenu(player, 0);
+        return;
+      }
+      if (paged.type == MenuType.SELL) {
+        Material material = paged.materialSlots.get(slot);
+        if (material == null) return;
+        sellAllMaterial(player, material);
+        openSellMenu(player, paged.page);
         return;
       }
       Integer id = paged.slotIds.get(slot);
@@ -835,6 +1043,22 @@ public final class FallenEconomyPlugin extends JavaPlugin implements Listener, T
     return icon;
   }
 
+  private ItemStack sellIcon(Material material, double value) {
+    ItemStack icon = new ItemStack(material);
+    ItemMeta meta = icon.getItemMeta();
+    if (meta != null) {
+      meta.setDisplayName(color("&f" + niceMaterial(material)));
+      meta.setLore(List.of(
+        color("&7Value: &a" + format(value) + " " + currencyName),
+        color("&eClick to sell all matching items"),
+        color("&8Armor and offhand are not touched")
+      ));
+      meta.addItemFlags(ItemFlag.HIDE_ATTRIBUTES);
+      icon.setItemMeta(meta);
+    }
+    return icon;
+  }
+
   private ItemStack orderIcon(BuyOrder order) {
     ItemStack icon = new ItemStack(order.material);
     ItemMeta meta = icon.getItemMeta();
@@ -868,6 +1092,7 @@ public final class FallenEconomyPlugin extends JavaPlugin implements Listener, T
     SortMode current = switch (type) {
       case AUCTION -> auctionSort(player);
       case ORDERS -> orderSort(player);
+      case SELL -> SortMode.NEWEST;
       case BUY, BUY_CONFIG -> buySort(player);
     };
     SortMode[] modes = SortMode.values();
@@ -886,6 +1111,12 @@ public final class FallenEconomyPlugin extends JavaPlugin implements Listener, T
       case NEWEST -> Comparator.<BuyShopItem>comparingLong(i -> i.createdAt).reversed();
     };
     return buyShopItems.values().stream().sorted(comparator).collect(Collectors.toList());
+  }
+
+  private List<Map.Entry<Material, Double>> sortedSellValues() {
+    return sellValues.entrySet().stream()
+      .sorted(Map.Entry.comparingByKey(Comparator.comparing(Material::name)))
+      .collect(Collectors.toList());
   }
 
   private List<AuctionListing> sortedAuctions(Player player) {
@@ -922,9 +1153,18 @@ public final class FallenEconomyPlugin extends JavaPlugin implements Listener, T
     return buySorts.computeIfAbsent(player.getUniqueId(), ignored -> defaultSort("buy.default-sort"));
   }
 
+  private double sellValue(Material material) {
+    return sellValues.getOrDefault(material, 0.0);
+  }
+
   private SortMode defaultSort(String path) {
     SortMode sort = SortMode.from(getConfig().getString(path, "NEWEST"));
     return sort == null ? SortMode.NEWEST : sort;
+  }
+
+  private void saveBundledDataFile(String fileName) {
+    File file = new File(getDataFolder(), fileName);
+    if (!file.exists()) saveResource(fileName, false);
   }
 
   private void loadBuyShop() {
@@ -936,7 +1176,7 @@ public final class FallenEconomyPlugin extends JavaPlugin implements Listener, T
     for (String key : section.getKeys(false)) {
       ConfigurationSection row = section.getConfigurationSection(key);
       if (row == null) continue;
-      ItemStack item = row.getItemStack("item");
+      ItemStack item = loadConfiguredItem(row);
       if (item == null || item.getType().isAir()) continue;
       Integer parsedId = parseInt(key);
       int id = parsedId == null ? row.getInt("id") : parsedId;
@@ -950,6 +1190,19 @@ public final class FallenEconomyPlugin extends JavaPlugin implements Listener, T
     }
   }
 
+  private void loadSellValues() {
+    sellValues.clear();
+    FileConfiguration config = YamlConfiguration.loadConfiguration(sellValuesFile);
+    ConfigurationSection section = config.getConfigurationSection("items");
+    if (section == null) return;
+    for (String key : section.getKeys(false)) {
+      Material material = Material.matchMaterial(key);
+      if (material == null || material.isAir()) continue;
+      double value = section.getDouble(key, 0);
+      if (value > 0) sellValues.put(material, value);
+    }
+  }
+
   private void saveBuyShop() {
     YamlConfiguration config = new YamlConfiguration();
     config.set("next-id", nextBuyShopId);
@@ -960,6 +1213,17 @@ public final class FallenEconomyPlugin extends JavaPlugin implements Listener, T
       config.set(path + "created-at", item.createdAt);
     }
     saveYaml(config, buyShopFile);
+  }
+
+  private ItemStack loadConfiguredItem(ConfigurationSection row) {
+    ConfigurationSection itemSection = row.getConfigurationSection("item");
+    if (itemSection != null && !itemSection.contains("==")) {
+      Material material = Material.matchMaterial(itemSection.getString("material", ""));
+      if (material == null || material.isAir()) return null;
+      int amount = Math.max(1, itemSection.getInt("amount", 1));
+      return new ItemStack(material, amount);
+    }
+    return row.getItemStack("item");
   }
 
   private void loadAuctions() {
@@ -1066,12 +1330,20 @@ public final class FallenEconomyPlugin extends JavaPlugin implements Listener, T
 
   private void sendBuyHelp(Player player) {
     player.sendMessage(color("&6Fallen Buy"));
+    player.sendMessage(color("&e/shop &7- open buy shop"));
     player.sendMessage(color("&e/buy &7- open buy shop"));
     player.sendMessage(color("&e/buy sort <newest|oldest|price_asc|price_desc|amount>"));
     if (player.hasPermission("falleneconomy.buy.config")) {
       player.sendMessage(color("&e/buy config &7- open buy shop config"));
       player.sendMessage(color("&e/buy config add <price> &7- add held item stack"));
     }
+  }
+
+  private void sendSellHelp(Player player) {
+    player.sendMessage(color("&6Fallen Sell"));
+    player.sendMessage(color("&e/sell &7- open sell values"));
+    player.sendMessage(color("&e/sell hand &7- sell held item stack"));
+    player.sendMessage(color("&e/sell all &7- sell inventory storage"));
   }
 
   private void sendBuyConfigHelp(Player player) {
@@ -1094,11 +1366,12 @@ public final class FallenEconomyPlugin extends JavaPlugin implements Listener, T
   @Override
   public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
     String name = command.getName().toLowerCase(Locale.ROOT);
-    if (name.equals("buy")) {
+    if (name.equals("shop") || name.equals("buy")) {
       if (args.length == 1) return filter(List.of("config", "sort", "help"), args[0]);
       if (args.length == 2 && args[0].equalsIgnoreCase("sort")) return filter(SortMode.ids(), args[1]);
       if (args.length == 2 && args[0].equalsIgnoreCase("config")) return filter(List.of("add", "remove", "delete", "price", "list", "help"), args[1]);
     }
+    if (name.equals("sell") && args.length == 1) return filter(List.of("hand", "all", "help"), args[0]);
     if (name.equals("ah")) {
       if (args.length == 1) return filter(List.of("sell", "sort", "cancel", "help"), args[0]);
       if (args.length == 2 && args[0].equalsIgnoreCase("sort")) return filter(SortMode.ids(), args[1]);
@@ -1106,6 +1379,12 @@ public final class FallenEconomyPlugin extends JavaPlugin implements Listener, T
     if (name.equals("order")) {
       if (args.length == 1) return filter(List.of("create", "fill", "sort", "cancel", "help"), args[0]);
       if (args.length == 2 && args[0].equalsIgnoreCase("sort")) return filter(SortMode.ids(), args[1]);
+    }
+    if (name.equals("pay") && args.length == 1) {
+      return Bukkit.getOnlinePlayers().stream()
+        .map(Player::getName)
+        .filter(playerName -> playerName.toLowerCase(Locale.ROOT).startsWith(args[0].toLowerCase(Locale.ROOT)))
+        .toList();
     }
     if (name.equals("feconomy") && args.length == 1) return filter(List.of("balance", "give"), args[0]);
     return List.of();
@@ -1200,7 +1479,8 @@ public final class FallenEconomyPlugin extends JavaPlugin implements Listener, T
     BUY,
     BUY_CONFIG,
     AUCTION,
-    ORDERS
+    ORDERS,
+    SELL
   }
 
   private enum SortMode {
@@ -1236,6 +1516,7 @@ public final class FallenEconomyPlugin extends JavaPlugin implements Listener, T
     private final MenuType type;
     private final int page;
     private final Map<Integer, Integer> slotIds = new HashMap<>();
+    private final Map<Integer, Material> materialSlots = new HashMap<>();
     private Inventory inventory;
 
     private PagedHolder(MenuType type, int page) {
@@ -1273,90 +1554,8 @@ public final class FallenEconomyPlugin extends JavaPlugin implements Listener, T
     double balance(OfflinePlayer player);
 
     static EconomyBridge create(FallenEconomyPlugin plugin) {
-      EconomyBridge vault = VaultReflectionEconomyBridge.tryCreate(plugin);
-      if (vault != null) {
-        plugin.getLogger().info("Using Vault economy for Fallen Economy.");
-        return vault;
-      }
-      if (!plugin.getConfig().getBoolean("internal-economy.enabled-when-vault-missing", true)) {
-        plugin.getLogger().warning("Vault economy not found and internal economy is disabled. Transactions will fail.");
-        return new DisabledEconomyBridge();
-      }
-      plugin.getLogger().info("Vault economy not found. Using Fallen internal balances.");
+      plugin.getLogger().info("Using Fallen internal Essence balances.");
       return new InternalEconomyBridge(plugin);
-    }
-  }
-
-  private static final class VaultReflectionEconomyBridge implements EconomyBridge {
-    private final Object economy;
-    private final Method has;
-    private final Method withdraw;
-    private final Method deposit;
-    private final Method balance;
-
-    private VaultReflectionEconomyBridge(Object economy, Method has, Method withdraw, Method deposit, Method balance) {
-      this.economy = economy;
-      this.has = has;
-      this.withdraw = withdraw;
-      this.deposit = deposit;
-      this.balance = balance;
-    }
-
-    private static EconomyBridge tryCreate(JavaPlugin plugin) {
-      try {
-        Class<?> economyClass = Class.forName("net.milkbowl.vault.economy.Economy");
-        RegisteredServiceProvider<?> rsp = Bukkit.getServicesManager().getRegistration(economyClass);
-        if (rsp == null || rsp.getProvider() == null) return null;
-        Object provider = rsp.getProvider();
-        return new VaultReflectionEconomyBridge(
-          provider,
-          economyClass.getMethod("has", OfflinePlayer.class, double.class),
-          economyClass.getMethod("withdrawPlayer", OfflinePlayer.class, double.class),
-          economyClass.getMethod("depositPlayer", OfflinePlayer.class, double.class),
-          economyClass.getMethod("getBalance", OfflinePlayer.class)
-        );
-      } catch (Exception exception) {
-        plugin.getLogger().info("Vault economy bridge unavailable: " + exception.getMessage());
-        return null;
-      }
-    }
-
-    @Override
-    public boolean has(OfflinePlayer player, double amount) {
-      try {
-        return Boolean.TRUE.equals(has.invoke(economy, player, amount));
-      } catch (Exception exception) {
-        return false;
-      }
-    }
-
-    @Override
-    public boolean withdraw(OfflinePlayer player, double amount) {
-      return transaction(withdraw, player, amount);
-    }
-
-    @Override
-    public void deposit(OfflinePlayer player, double amount) {
-      transaction(deposit, player, amount);
-    }
-
-    @Override
-    public double balance(OfflinePlayer player) {
-      try {
-        return ((Number) balance.invoke(economy, player)).doubleValue();
-      } catch (Exception exception) {
-        return 0;
-      }
-    }
-
-    private boolean transaction(Method method, OfflinePlayer player, double amount) {
-      try {
-        Object response = method.invoke(economy, player, amount);
-        Method success = response.getClass().getMethod("transactionSuccess");
-        return Boolean.TRUE.equals(success.invoke(response));
-      } catch (Exception exception) {
-        return false;
-      }
     }
   }
 
@@ -1405,23 +1604,118 @@ public final class FallenEconomyPlugin extends JavaPlugin implements Listener, T
     }
   }
 
-  private static final class DisabledEconomyBridge implements EconomyBridge {
-    @Override
-    public boolean has(OfflinePlayer player, double amount) {
-      return false;
+  private static final class VaultCompatibilityHook {
+    private final JavaPlugin plugin;
+    private final Class<?> economyClass;
+    private final Object provider;
+
+    private VaultCompatibilityHook(JavaPlugin plugin, Class<?> economyClass, Object provider) {
+      this.plugin = plugin;
+      this.economyClass = economyClass;
+      this.provider = provider;
     }
 
-    @Override
-    public boolean withdraw(OfflinePlayer player, double amount) {
-      return false;
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    private static VaultCompatibilityHook tryRegister(JavaPlugin plugin, EconomyBridge bridge, String currencyName) {
+      try {
+        Class<?> economyClass = Class.forName("net.milkbowl.vault.economy.Economy");
+        Object provider = Proxy.newProxyInstance(
+          economyClass.getClassLoader(),
+          new Class<?>[] { economyClass },
+          (proxy, method, args) -> handleVaultCall(plugin, bridge, currencyName, method, args)
+        );
+        Bukkit.getServicesManager().register((Class) economyClass, provider, plugin, ServicePriority.Normal);
+        plugin.getLogger().info("Registered Fallen Economy as a Vault economy provider.");
+        return new VaultCompatibilityHook(plugin, economyClass, provider);
+      } catch (ClassNotFoundException exception) {
+        plugin.getLogger().info("Vault not found. Running standalone without Vault compatibility.");
+        return null;
+      } catch (Exception exception) {
+        plugin.getLogger().warning("Could not register Vault compatibility: " + exception.getMessage());
+        return null;
+      }
     }
 
-    @Override
-    public void deposit(OfflinePlayer player, double amount) {}
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    private void unregister() {
+      Bukkit.getServicesManager().unregister((Class) economyClass, provider);
+    }
 
-    @Override
-    public double balance(OfflinePlayer player) {
+    private static Object handleVaultCall(JavaPlugin plugin, EconomyBridge bridge, String currencyName, Method method, Object[] args) throws Exception {
+      String name = method.getName();
+      Class<?> returnType = method.getReturnType();
+      if (method.getDeclaringClass() == Object.class) {
+        return switch (name) {
+          case "toString" -> "FallenEconomyVaultProvider";
+          case "hashCode" -> System.identityHashCode(bridge);
+          case "equals" -> args != null && args.length == 1 && args[0] == bridge;
+          default -> null;
+        };
+      }
+      if (name.equals("isEnabled")) return true;
+      if (name.equals("getName")) return "FallenEconomy";
+      if (name.equals("hasBankSupport")) return false;
+      if (name.equals("fractionalDigits")) return 2;
+      if (name.equals("currencyNameSingular") || name.equals("currencyNamePlural")) return currencyName;
+      if (name.equals("format")) return formatVaultAmount(args, currencyName);
+      if (name.equals("getBanks")) return List.of();
+      if (name.equals("hasAccount") || name.equals("createPlayerAccount")) return true;
+
+      OfflinePlayer player = vaultPlayer(args);
+      double amount = vaultAmount(args);
+      if (name.equals("getBalance")) return player == null ? 0.0 : bridge.balance(player);
+      if (name.equals("has")) return player != null && bridge.has(player, amount);
+      if (name.equals("withdrawPlayer")) {
+        boolean success = player != null && bridge.withdraw(player, amount);
+        double balance = player == null ? 0.0 : bridge.balance(player);
+        return vaultResponse(success, amount, balance, success ? "" : "Insufficient funds or invalid player");
+      }
+      if (name.equals("depositPlayer")) {
+        if (player != null) bridge.deposit(player, amount);
+        double balance = player == null ? 0.0 : bridge.balance(player);
+        return vaultResponse(player != null, amount, balance, player == null ? "Invalid player" : "");
+      }
+      if (returnType.getName().equals("net.milkbowl.vault.economy.EconomyResponse")) {
+        return vaultResponse(false, 0, 0, "Banks are not supported by Fallen Economy.");
+      }
+      if (returnType == boolean.class || returnType == Boolean.class) return false;
+      if (returnType == int.class || returnType == Integer.class) return 0;
+      if (returnType == double.class || returnType == Double.class) return 0.0;
+      if (returnType == String.class) return "";
+      plugin.getLogger().fine("Unhandled Vault economy method: " + name);
+      return null;
+    }
+
+    private static OfflinePlayer vaultPlayer(Object[] args) {
+      if (args == null) return null;
+      for (Object arg : args) {
+        if (arg instanceof OfflinePlayer player) return player;
+        if (arg instanceof String name && !name.isBlank()) return Bukkit.getOfflinePlayer(name);
+      }
+      return null;
+    }
+
+    private static double vaultAmount(Object[] args) {
+      if (args == null) return 0;
+      for (Object arg : args) {
+        if (arg instanceof Number number) return number.doubleValue();
+      }
       return 0;
+    }
+
+    private static String formatVaultAmount(Object[] args, String currencyName) {
+      double amount = vaultAmount(args);
+      if (Math.abs(amount - Math.rint(amount)) < 0.0001) return (long) Math.rint(amount) + " " + currencyName;
+      return String.format(Locale.US, "%.2f %s", amount, currencyName);
+    }
+
+    private static Object vaultResponse(boolean success, double amount, double balance, String error) throws Exception {
+      Class<?> responseClass = Class.forName("net.milkbowl.vault.economy.EconomyResponse");
+      Class<?> responseTypeClass = Class.forName("net.milkbowl.vault.economy.EconomyResponse$ResponseType");
+      Object type = Enum.valueOf((Class<Enum>) responseTypeClass.asSubclass(Enum.class), success ? "SUCCESS" : "FAILURE");
+      return responseClass
+        .getConstructor(double.class, double.class, responseTypeClass, String.class)
+        .newInstance(amount, balance, type, error);
     }
   }
 }

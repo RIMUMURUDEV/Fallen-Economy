@@ -4,8 +4,11 @@
 
 | Permission | Default | Purpose |
 | --- | --- | --- |
-| `falleneconomy.buy` | `true` | Allows opening and buying from `/buy`. |
+| `falleneconomy.buy` | `true` | Allows opening and buying from `/shop` and `/buy`. |
 | `falleneconomy.buy.config` | `op` | Allows editing buy-shop items with `/buy config`. |
+| `falleneconomy.sell` | `true` | Allows `/sell`, `/sell hand`, and `/sell all`. |
+| `falleneconomy.balance` | `true` | Allows `/balance`, `/bal`, and `/money`. |
+| `falleneconomy.pay` | `true` | Allows `/pay <player> <amount>`. |
 | `falleneconomy.ah` | `true` | Allows opening and using `/ah`. |
 | `falleneconomy.ah.sell` | `true` | Allows `/ah sell <price>`. |
 | `falleneconomy.order` | `true` | Allows opening and using `/order`. |
@@ -20,6 +23,9 @@ Basic player permissions:
 /lp group default permission set falleneconomy.ah true
 /lp group default permission set falleneconomy.ah.sell true
 /lp group default permission set falleneconomy.buy true
+/lp group default permission set falleneconomy.sell true
+/lp group default permission set falleneconomy.balance true
+/lp group default permission set falleneconomy.pay true
 /lp group default permission set falleneconomy.order true
 /lp group default permission set falleneconomy.order.create true
 ```

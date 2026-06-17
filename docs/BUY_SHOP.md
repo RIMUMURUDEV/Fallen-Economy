@@ -5,6 +5,7 @@ The buy shop is a configurable server shop built into `FallenEconomy.jar`.
 Players open it with:
 
 ```text
+/shop
 /buy
 ```
 
@@ -70,7 +71,7 @@ Show the first 25 configured entries:
 
 ## Buying
 
-Players click an item in `/buy`. The plugin withdraws the configured price and gives the configured item stack. If the inventory is full, leftovers drop at the player's location.
+Players click an item in `/shop` or `/buy`. The plugin withdraws the configured price and gives the configured item stack. If the inventory is full, leftovers drop at the player's location.
 
 ## Limits
 

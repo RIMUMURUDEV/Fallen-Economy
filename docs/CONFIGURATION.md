@@ -15,6 +15,9 @@ buy:
   max-price: 1000000
   max-items: 500
   default-sort: NEWEST
+sell:
+  allow-hand: true
+  allow-all: true
 auction:
   min-price: 1
   max-price: 1000000
@@ -28,17 +31,17 @@ orders:
   max-orders-per-player: 25
   default-sort: NEWEST
 internal-economy:
-  enabled-when-vault-missing: true
   starting-balance: 0
 ```
 
-## Root
+## Main Keys
 
 | Key | Type | Description |
 | --- | --- | --- |
 | `currency-name` | string | Display name used in messages and GUI lore. |
+| `internal-economy.starting-balance` | number | Default Essence balance for players not yet present in `balances.yml`. |
 
-## Buy Shop
+## Shop And Sell
 
 | Key | Type | Description |
 | --- | --- | --- |
@@ -46,10 +49,12 @@ internal-economy:
 | `buy.max-price` | number | Highest allowed buy-shop item price. |
 | `buy.max-items` | integer | Maximum number of configured buy-shop items. |
 | `buy.default-sort` | string | Initial buy-shop GUI sort mode. |
+| `sell.allow-hand` | boolean | Reserved setting for `/sell hand`. |
+| `sell.allow-all` | boolean | Reserved setting for `/sell all`. |
 
-Buy-shop prices are stored directly in the active economy currency displayed as `Essence`.
+Buy-shop prices are stored in `buy-shop.yml`. Sell prices are stored in `sell-values.yml`.
 
-## Auction
+## Auction And Orders
 
 | Key | Type | Description |
 | --- | --- | --- |
@@ -58,23 +63,11 @@ Buy-shop prices are stored directly in the active economy currency displayed as 
 | `auction.max-listings-per-player` | integer | Maximum active auction listings per player. |
 | `auction.confirm-purchase` | boolean | Whether clicking an auction opens a confirmation GUI before payment. |
 | `auction.default-sort` | string | Initial auction GUI sort mode. |
-
-## Orders
-
-| Key | Type | Description |
-| --- | --- | --- |
 | `orders.min-unit-price` | number | Lowest unit price for buy orders. |
 | `orders.max-unit-price` | number | Highest unit price for buy orders. |
 | `orders.max-amount` | integer | Highest item amount for one buy order. |
 | `orders.max-orders-per-player` | integer | Maximum active buy orders per player. |
 | `orders.default-sort` | string | Initial buy-order GUI sort mode. |
-
-## Internal Economy
-
-| Key | Type | Description |
-| --- | --- | --- |
-| `internal-economy.enabled-when-vault-missing` | boolean | Enables internal balances when Vault economy is unavailable. |
-| `internal-economy.starting-balance` | number | Default balance for players not yet present in `balances.yml`. |
 
 ## Sort Values
 
@@ -87,5 +80,3 @@ PRICE_ASC
 PRICE_DESC
 AMOUNT
 ```
-
-Lowercase values also work through command parsing, but config should use uppercase for readability.

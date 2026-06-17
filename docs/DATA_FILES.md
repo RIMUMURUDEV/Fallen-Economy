@@ -8,14 +8,25 @@ plugins/FallenEconomy/
 
 ## buy-shop.yml
 
-Stores configured `/buy` shop items.
+Stores configured `/shop` and `/buy` shop items.
 
 Contains:
 
 - next buy-shop id
-- serialized item stack
-- price in the active currency
+- item stack or simple material/amount data
+- price in Essence
 - creation timestamp
+
+Do not edit this while the server is running.
+
+## sell-values.yml
+
+Stores native `/sell` values.
+
+Contains:
+
+- material name
+- sell value per item in Essence
 
 Do not edit this while the server is running.
 
@@ -59,9 +70,9 @@ Do not edit this while the server is running.
 
 ## balances.yml
 
-Stores internal economy balances.
+Stores internal Essence balances.
 
-Only used when Vault economy is unavailable and internal fallback is enabled.
+This is always the source of truth, even when Vault compatibility is enabled.
 
 ## Backups
 
@@ -72,4 +83,5 @@ plugins/FallenEconomy/auctions.yml
 plugins/FallenEconomy/orders.yml
 plugins/FallenEconomy/balances.yml
 plugins/FallenEconomy/buy-shop.yml
+plugins/FallenEconomy/sell-values.yml
 ```

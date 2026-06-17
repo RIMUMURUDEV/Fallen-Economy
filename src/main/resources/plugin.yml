@@ -1,14 +1,20 @@
 name: FallenEconomy
-version: 1.1.0
+version: 1.2.0
 main: dev.fallen.economy.FallenEconomyPlugin
 api-version: '1.21'
 author: Fallen
 softdepend:
   - Vault
 commands:
+  shop:
+    description: Opens the native Fallen buy shop.
+    usage: /shop
   buy:
     description: Opens or configures the Fallen buy shop.
     usage: /buy
+  sell:
+    description: Opens sell values or sells items for Essence.
+    usage: /sell
   ah:
     description: Opens the Fallen auction house.
     usage: /ah
@@ -23,11 +29,26 @@ commands:
   feconomy:
     description: Admin economy tools for Fallen Economy internal balances.
     usage: /feconomy
+  balance:
+    description: Shows your Essence balance.
+    usage: /balance
+    aliases:
+      - bal
+      - money
+  pay:
+    description: Pays Essence to another online player.
+    usage: /pay <player> <amount>
 permissions:
   falleneconomy.buy:
     default: true
   falleneconomy.buy.config:
     default: op
+  falleneconomy.sell:
+    default: true
+  falleneconomy.balance:
+    default: true
+  falleneconomy.pay:
+    default: true
   falleneconomy.ah:
     default: true
   falleneconomy.ah.sell:
