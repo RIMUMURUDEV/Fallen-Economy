@@ -31,6 +31,7 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.event.inventory.InventoryDragEvent;
+import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.InventoryHolder;
 import org.bukkit.inventory.ItemFlag;
@@ -46,6 +47,7 @@ import org.bukkit.potion.PotionEffectType;
 public final class FallenEconomyPlugin extends JavaPlugin implements Listener, TabExecutor {
   private final Map<Integer, AuctionListing> auctions = new LinkedHashMap<>();
   private final Map<Integer, BuyOrder> orders = new LinkedHashMap<>();
+  private final Map<UUID, List<ItemStack>> orderDeliveries = new HashMap<>();
   private final Map<Integer, BuyShopItem> buyShopItems = new LinkedHashMap<>();
   private final Map<Integer, BuyShopItem> essenceShopItems = new LinkedHashMap<>();
   private final Map<Material, Double> sellValues = new LinkedHashMap<>();
@@ -59,6 +61,7 @@ public final class FallenEconomyPlugin extends JavaPlugin implements Listener, T
   private File sellValuesFile;
   private File auctionsFile;
   private File ordersFile;
+  private File orderDeliveriesFile;
   private File balancesFile;
   private EconomyBridge economy;
   private PlayerPointsEssenceBridge essence;
@@ -81,6 +84,7 @@ public final class FallenEconomyPlugin extends JavaPlugin implements Listener, T
     sellValuesFile = new File(getDataFolder(), "sell-values.yml");
     auctionsFile = new File(getDataFolder(), "auctions.yml");
     ordersFile = new File(getDataFolder(), "orders.yml");
+    orderDeliveriesFile = new File(getDataFolder(), "order-deliveries.yml");
     balancesFile = new File(getDataFolder(), getConfig().getString("money.storage-file", "money.yml"));
 
     saveBundledDataFile("buy-shop.yml");
@@ -96,6 +100,7 @@ public final class FallenEconomyPlugin extends JavaPlugin implements Listener, T
     loadSellValues();
     loadAuctions();
     loadOrders();
+    loadOrderDeliveries();
 
     Objects.requireNonNull(getCommand("shop")).setExecutor(this);
     Objects.requireNonNull(getCommand("shop")).setTabCompleter(this);
@@ -126,6 +131,7 @@ public final class FallenEconomyPlugin extends JavaPlugin implements Listener, T
     saveEssenceShop();
     saveAuctions();
     saveOrders();
+    saveOrderDeliveries();
     if (vaultHook != null) vaultHook.unregister();
     if (economy instanceof InternalEconomyBridge internal) internal.save();
   }
@@ -860,9 +866,11 @@ public final class FallenEconomyPlugin extends JavaPlugin implements Listener, T
     seller.getInventory().setItemInMainHand(hand.getAmount() <= 0 ? null : hand);
     double payout = fill * order.unitPrice;
     economy.deposit(seller, payout);
+    deliverOrderItems(order.creator, new ItemStack(order.material, fill));
     order.remaining -= fill;
     if (order.remaining <= 0) orders.remove(id);
     saveOrders();
+    saveOrderDeliveries();
     seller.sendMessage(color("&aFilled &f" + fill + "x " + niceMaterial(order.material) + " &afor &f" + format(payout) + " " + moneyName + "&a."));
     OfflinePlayer creator = Bukkit.getOfflinePlayer(order.creator);
     if (creator.isOnline() && creator.getPlayer() != null) {
@@ -1541,6 +1549,11 @@ public final class FallenEconomyPlugin extends JavaPlugin implements Listener, T
       .collect(Collectors.toList());
   }
 
+  @EventHandler
+  public void onPlayerJoin(PlayerJoinEvent event) {
+    deliverPendingOrderItems(event.getPlayer());
+  }
+
   private List<Map.Entry<Material, Double>> sortedSellValues() {
     return sellValues.entrySet().stream()
       .sorted(Map.Entry.comparingByKey(Comparator.comparing(Material::name)))
@@ -1819,6 +1832,40 @@ public final class FallenEconomyPlugin extends JavaPlugin implements Listener, T
     saveYaml(config, ordersFile);
   }
 
+  private void loadOrderDeliveries() {
+    orderDeliveries.clear();
+    FileConfiguration config = YamlConfiguration.loadConfiguration(orderDeliveriesFile);
+    ConfigurationSection section = config.getConfigurationSection("players");
+    if (section == null) return;
+    for (String key : section.getKeys(false)) {
+      UUID uuid;
+      try {
+        uuid = UUID.fromString(key);
+      } catch (IllegalArgumentException ignored) {
+        continue;
+      }
+      List<?> rawItems = section.getList(key);
+      if (rawItems == null) continue;
+      List<ItemStack> items = new ArrayList<>();
+      for (Object rawItem : rawItems) {
+        if (rawItem instanceof ItemStack item && !item.getType().isAir() && item.getAmount() > 0) {
+          items.add(item.clone());
+        }
+      }
+      if (!items.isEmpty()) orderDeliveries.put(uuid, items);
+    }
+  }
+
+  private void saveOrderDeliveries() {
+    YamlConfiguration config = new YamlConfiguration();
+    for (Map.Entry<UUID, List<ItemStack>> entry : orderDeliveries.entrySet()) {
+      if (!entry.getValue().isEmpty()) {
+        config.set("players." + entry.getKey(), entry.getValue());
+      }
+    }
+    saveYaml(config, orderDeliveriesFile);
+  }
+
   private void saveYaml(YamlConfiguration config, File file) {
     try {
       if (!file.getParentFile().exists()) file.getParentFile().mkdirs();
@@ -1831,6 +1878,25 @@ public final class FallenEconomyPlugin extends JavaPlugin implements Listener, T
   private void giveOrDrop(Player player, ItemStack item) {
     Map<Integer, ItemStack> leftover = player.getInventory().addItem(item);
     leftover.values().forEach(stack -> player.getWorld().dropItemNaturally(player.getLocation(), stack));
+  }
+
+  private void deliverOrderItems(UUID buyerId, ItemStack item) {
+    Player buyer = Bukkit.getPlayer(buyerId);
+    if (buyer != null && buyer.isOnline()) {
+      giveOrDrop(buyer, item);
+      return;
+    }
+    orderDeliveries.computeIfAbsent(buyerId, ignored -> new ArrayList<>()).add(item.clone());
+  }
+
+  private void deliverPendingOrderItems(Player player) {
+    List<ItemStack> items = orderDeliveries.remove(player.getUniqueId());
+    if (items == null || items.isEmpty()) return;
+    for (ItemStack item : items) {
+      giveOrDrop(player, item.clone());
+    }
+    saveOrderDeliveries();
+    player.sendMessage(color("&aDelivered &f" + items.size() + " &apending order stack(s)."));
   }
 
   private void sendAuctionHelp(Player player) {
