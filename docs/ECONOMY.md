@@ -12,7 +12,7 @@ plugins/FallenEconomy/money.yml
 
 Used by:
 
-- `/shop` and `/buy` normal categories
+- `/shop` End, Nether, Gear, and Food categories
 - `/sell`, `/sell hand`, `/sell all`
 - `/balance`, `/bal`, `/money`
 - `/pay`
@@ -30,8 +30,9 @@ Essence is backed by PlayerPoints.
 Used by:
 
 - `/essence`
+- `/shop spawners`
 - `/essenceshop`
-- Essence-priced shop entries such as spawners
+- Essence-priced special entries such as spawners
 - `/feconomy essence balance/give/take/set`
 - future bounty/key integrations
 

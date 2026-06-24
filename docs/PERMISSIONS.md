@@ -2,8 +2,8 @@
 
 | Permission | Default | Description |
 | --- | --- | --- |
-| `falleneconomy.buy` | `true` | Use `/shop` and `/buy`. |
-| `falleneconomy.buy.config` | `op` | Edit the normal shop with `/buy config`. |
+| `falleneconomy.buy` | `true` | Use `/shop`. |
+| `falleneconomy.buy.config` | `op` | Edit the normal `$` shop with `/shop config`. |
 | `falleneconomy.essence` | `true` | Use `/essence`. |
 | `falleneconomy.essenceshop` | `true` | Use `/essenceshop`. |
 | `falleneconomy.essenceshop.config` | `op` | Edit the Essence shop. |

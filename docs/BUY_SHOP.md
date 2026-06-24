@@ -1,6 +1,6 @@
 # Buy Shop
 
-`/shop` and `/buy` open the same native buy-only shop.
+`/shop` opens the native buy-only shop.
 
 ## Normal Shop
 
@@ -10,36 +10,37 @@ The normal shop uses `$` by default and is stored in:
 plugins/FallenEconomy/buy-shop.yml
 ```
 
-Starter categories:
+Starter `$` categories:
 
 - End
 - Nether
 - Gear
 - Food
 
+The player-facing `/shop` also shows a special `Spawners` category. That category is backed by `essence-shop.yml` and uses PlayerPoints Essence.
+
 Each item stores:
 
 - `category`
-- `currency`
 - `item`
 - `price`
 - `created-at`
 
-Admin add command:
+Admin add command for normal `$` shop entries:
 
 ```text
-/buy config add <price> <category> [money|essence]
+/shop config add <price> <category>
 ```
 
 Example:
 
 ```text
-/buy config add 350 Gear money
+/shop config add 350 Gear
 ```
 
 ## Essence Shop
 
-`/essenceshop` is separate and uses PlayerPoints Essence. It is stored in:
+`/essenceshop` is the direct/admin view for special Essence items. It is stored in:
 
 ```text
 plugins/FallenEconomy/essence-shop.yml

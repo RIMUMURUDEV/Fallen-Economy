@@ -11,11 +11,8 @@ softdepend:
   - PlayerPoints
 commands:
   shop:
-    description: Opens the native Fallen buy shop.
+    description: Opens the native Fallen shop.
     usage: /shop
-  buy:
-    description: Opens or configures the Fallen buy shop.
-    usage: /buy
   sell:
     description: Opens sell values or sells items for money.
     usage: /sell

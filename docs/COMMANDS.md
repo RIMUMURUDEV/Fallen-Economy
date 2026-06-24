@@ -5,9 +5,9 @@
 | Command | Description |
 | --- | --- |
 | `/shop` | Opens native shop categories. |
-| `/buy` | Opens the same native shop categories. |
-| `/buy <end|nether|gear|food>` | Opens a `$` shop category. |
-| `/buy sort <mode>` | Sets shop sort mode. |
+| `/shop <end|nether|gear|food>` | Opens a `$` shop category. |
+| `/shop spawners` | Opens the Essence-priced spawner category. |
+| `/shop sort <mode>` | Sets shop sort mode. |
 | `/essence` | Shows PlayerPoints Essence balance. |
 | `/essenceshop` | Opens the Essence shop. |
 | `/essenceshop <category>` | Opens an Essence shop category. |
@@ -35,11 +35,11 @@
 
 | Command | Description |
 | --- | --- |
-| `/buy config` | Opens the admin `$` shop config GUI. |
-| `/buy config add <price> <category> [money|essence]` | Adds the held item stack to `buy-shop.yml`. |
-| `/buy config remove <id>` | Removes a buy-shop item. |
-| `/buy config price <id> <price>` | Changes a buy-shop item price. |
-| `/buy config list` | Lists configured buy-shop items in chat. |
+| `/shop config` | Opens the admin `$` shop config GUI. |
+| `/shop config add <price> <category>` | Adds the held item stack to `buy-shop.yml` for `$`. |
+| `/shop config remove <id>` | Removes a shop item. |
+| `/shop config price <id> <price>` | Changes a shop item price. |
+| `/shop config list` | Lists configured `$` shop items in chat. |
 | `/essenceshop config` | Opens the Essence shop config GUI. |
 | `/essenceshop config add <price> <category>` | Adds the held item stack to `essence-shop.yml`. |
 | `/essenceshop config remove <id>` | Removes an Essence shop item. |
@@ -53,7 +53,7 @@
 
 ## Sort Modes
 
-`/buy sort`, `/ah sort`, and `/order sort` support:
+`/shop sort`, `/ah sort`, and `/order sort` support:
 
 ```text
 newest

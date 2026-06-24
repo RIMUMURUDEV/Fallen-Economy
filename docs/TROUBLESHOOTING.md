@@ -17,7 +17,6 @@ Expected command owners:
 
 ```text
 /shop        -> FallenEconomy.jar
-/buy         -> FallenEconomy.jar
 /sell        -> FallenEconomy.jar
 /ah          -> FallenEconomy.jar
 /order       -> FallenEconomy.jar
@@ -32,7 +31,7 @@ If another plugin captures a command, check `commands.yml` aliases and plugin co
 Check:
 
 - player has `falleneconomy.buy.config`
-- player is holding an item when using `/buy config add <price> <category> [money|essence]`
+- player is holding an item when using `/shop config add <price> <category>`
 - price is inside `buy.min-price` and `buy.max-price`
 - shop has not reached `buy.max-items`
 
