@@ -39,7 +39,7 @@ Check:
 
 ## Shop Categories Are Empty
 
-On startup, FallenEconomy logs how many buy-shop items were loaded and which file was used. If `buy-shop.yml` loads 0 items, the plugin backs it up and restores the bundled starter shop automatically.
+On startup, FallenEconomy logs how many buy-shop items were loaded and which file was used. If `buy-shop.yml` loads 0 items or only legacy/miscategorized items, the plugin backs it up and restores the bundled starter shop automatically.
 
 ## Essence Shop Does Not Work
 

@@ -1664,6 +1664,12 @@ public final class FallenEconomyPlugin extends JavaPlugin implements Listener, T
       restoreBundledDataFile("buy-shop.yml", buyShopFile);
       nextBuyShopId = loadShopFile(buyShopFile, buyShopItems, ShopCurrency.MONEY);
     }
+    if (!buyShopItems.isEmpty() && !hasAnyMainBuyCategory()) {
+      getLogger().warning("Buy shop loaded without End/Nether/Gear/Food categories from " + buyShopFile.getAbsolutePath() + ". Restoring bundled buy-shop.yml.");
+      buyShopItems.clear();
+      restoreBundledDataFile("buy-shop.yml", buyShopFile);
+      nextBuyShopId = loadShopFile(buyShopFile, buyShopItems, ShopCurrency.MONEY);
+    }
     logShopLoad("Buy shop", buyShopFile, buyShopItems);
   }
 
@@ -1696,6 +1702,15 @@ public final class FallenEconomyPlugin extends JavaPlugin implements Listener, T
         .map(entry -> entry.getKey() + "=" + entry.getValue())
         .collect(Collectors.joining(", "));
     getLogger().info(label + " loaded " + items.size() + " items from " + file.getAbsolutePath() + " (" + summary + ").");
+  }
+
+  private boolean hasAnyMainBuyCategory() {
+    return buyShopItems.values().stream().anyMatch(item ->
+      item.category.equalsIgnoreCase("End") ||
+      item.category.equalsIgnoreCase("Nether") ||
+      item.category.equalsIgnoreCase("Gear") ||
+      item.category.equalsIgnoreCase("Food")
+    );
   }
 
   private int loadShopFile(File file, Map<Integer, BuyShopItem> target, ShopCurrency defaultCurrency) {
