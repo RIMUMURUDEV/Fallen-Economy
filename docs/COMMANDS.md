@@ -49,6 +49,7 @@
 | `/feconomy set <player> <amount>` | Sets a player's `$` balance. |
 | `/feconomy essence balance <player>` | Shows PlayerPoints Essence balance. |
 | `/feconomy essence give|take|set <player> <amount>` | Manages PlayerPoints Essence. |
+| `/feconomy tools give <player> <pickaxe|axe|sellwand> [amount]` | Gives Fallen utility tools. |
 
 ## Sort Modes
 

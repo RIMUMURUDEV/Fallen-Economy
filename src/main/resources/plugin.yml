@@ -1,5 +1,5 @@
 name: FallenEconomy
-version: 1.3.6
+version: 1.4.0
 main: dev.fallen.economy.FallenEconomyPlugin
 api-version: '1.21'
 authors:
@@ -72,3 +72,9 @@ permissions:
     default: true
   falleneconomy.admin:
     default: op
+  falleneconomy.tools.pickaxe:
+    default: true
+  falleneconomy.tools.axe:
+    default: true
+  falleneconomy.tools.sellwand:
+    default: true

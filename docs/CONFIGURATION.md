@@ -36,6 +36,16 @@ Shop limits:
 
 Auction and order settings remain in `auction.*` and `orders.*`.
 
+Utility tools:
+
+| Path | Meaning |
+| --- | --- |
+| `tools.pickaxe.enabled` | Enables Fallen 3x3 Pickaxe. |
+| `tools.pickaxe.max-extra-blocks` | Maximum extra blocks broken per pickaxe use. |
+| `tools.axe.enabled` | Enables Fallen Treecapitator Axe. |
+| `tools.axe.max-logs` | Maximum connected logs broken per axe use. |
+| `tools.sellwand.enabled` | Enables Fallen Sell Wand. |
+
 Editable data files:
 
 - `buy-shop.yml`

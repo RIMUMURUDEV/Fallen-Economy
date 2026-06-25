@@ -28,3 +28,12 @@ orders:
   max-amount: 3456
   max-orders-per-player: 25
   default-sort: NEWEST
+tools:
+  pickaxe:
+    enabled: true
+    max-extra-blocks: 8
+  axe:
+    enabled: true
+    max-logs: 128
+  sellwand:
+    enabled: true

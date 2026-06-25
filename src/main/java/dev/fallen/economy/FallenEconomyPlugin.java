@@ -7,19 +7,30 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.ArrayDeque;
 import java.util.Comparator;
+import java.util.Deque;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
+import org.bukkit.GameMode;
+import org.bukkit.Location;
 import org.bukkit.Material;
+import org.bukkit.NamespacedKey;
 import org.bukkit.OfflinePlayer;
+import org.bukkit.Tag;
+import org.bukkit.block.Block;
+import org.bukkit.block.BlockFace;
+import org.bukkit.block.Container;
 import org.bukkit.block.CreatureSpawner;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
@@ -32,18 +43,24 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
+import org.bukkit.event.block.Action;
+import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.event.inventory.InventoryDragEvent;
+import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerCommandPreprocessEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.InventoryHolder;
+import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.Damageable;
 import org.bukkit.inventory.meta.BlockStateMeta;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.inventory.meta.PotionMeta;
+import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.plugin.ServicePriority;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.potion.PotionEffect;
@@ -60,6 +77,8 @@ public final class FallenEconomyPlugin extends JavaPlugin implements Listener, T
   private final Map<UUID, SortMode> orderSorts = new HashMap<>();
   private final Map<UUID, SortMode> buySorts = new HashMap<>();
   private final Map<UUID, ConfirmData> confirmations = new HashMap<>();
+  private final Map<UUID, LastBlockFace> lastBlockFaces = new HashMap<>();
+  private final Set<Location> utilityBreakBlocks = new HashSet<>();
 
   private File buyShopFile;
   private File essenceShopFile;
@@ -77,10 +96,16 @@ public final class FallenEconomyPlugin extends JavaPlugin implements Listener, T
   private int nextOrderId = 1;
   private String moneyName;
   private String essenceName;
+  private NamespacedKey toolKey;
+
+  private static final String TOOL_PICKAXE = "pickaxe_3x3";
+  private static final String TOOL_AXE = "treecapitator_axe";
+  private static final String TOOL_SELL_WAND = "sell_wand";
 
   @Override
   public void onEnable() {
     saveDefaultConfig();
+    toolKey = new NamespacedKey(this, "tool");
     moneyName = getConfig().getString("money.name", getConfig().getString("currency-name", "$"));
     essenceName = getConfig().getString("essence.name", "Essence");
 
@@ -174,6 +199,45 @@ public final class FallenEconomyPlugin extends JavaPlugin implements Listener, T
     event.setCancelled(true);
     String[] args = Arrays.copyOfRange(parts, 1, parts.length);
     handleBuyCommand(event.getPlayer(), args);
+  }
+
+  @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+  public void onUtilityInteract(PlayerInteractEvent event) {
+    Player player = event.getPlayer();
+    if (event.getAction() == Action.LEFT_CLICK_BLOCK && event.getClickedBlock() != null && event.getBlockFace() != null) {
+      lastBlockFaces.put(player.getUniqueId(), new LastBlockFace(event.getClickedBlock().getLocation(), event.getBlockFace(), System.currentTimeMillis()));
+      return;
+    }
+    if (event.getHand() != null && event.getHand() != EquipmentSlot.HAND) return;
+    if (event.getAction() != Action.RIGHT_CLICK_BLOCK || event.getClickedBlock() == null) return;
+    ItemStack hand = player.getInventory().getItemInMainHand();
+    if (!isUtilityTool(hand, TOOL_SELL_WAND)) return;
+    if (!getConfig().getBoolean("tools.sellwand.enabled", true)) {
+      player.sendMessage(color("&cSell Wand is disabled."));
+      return;
+    }
+    if (!player.hasPermission("falleneconomy.tools.sellwand")) {
+      player.sendMessage(color("&cYou do not have permission to use this tool."));
+      return;
+    }
+    if (!(event.getClickedBlock().getState() instanceof Container container)) return;
+    event.setCancelled(true);
+    sellContainerContents(player, container.getInventory());
+  }
+
+  @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+  public void onUtilityBlockBreak(BlockBreakEvent event) {
+    Block block = event.getBlock();
+    if (utilityBreakBlocks.contains(block.getLocation())) return;
+    Player player = event.getPlayer();
+    ItemStack tool = player.getInventory().getItemInMainHand();
+    if (isUtilityTool(tool, TOOL_PICKAXE)) {
+      handlePickaxeBreak(player, block, tool);
+      return;
+    }
+    if (isUtilityTool(tool, TOOL_AXE)) {
+      handleTreecapitatorBreak(player, block, tool);
+    }
   }
 
   private boolean handleBuyCommand(CommandSender sender, String[] args) {
@@ -667,10 +731,14 @@ public final class FallenEconomyPlugin extends JavaPlugin implements Listener, T
       sender.sendMessage(color("&e/feconomy set <player> <amount>"));
       sender.sendMessage(color("&e/feconomy essence balance <player>"));
       sender.sendMessage(color("&e/feconomy essence give|take|set <player> <amount>"));
+      sender.sendMessage(color("&e/feconomy tools give <player> <pickaxe|axe|sellwand> [amount]"));
       return true;
     }
     if (args[0].equalsIgnoreCase("essence")) {
       return handleAdminEssenceCommand(sender, args);
+    }
+    if (args[0].equalsIgnoreCase("tools")) {
+      return handleAdminToolsCommand(sender, args);
     }
     if (args[0].equalsIgnoreCase("balance") && args.length >= 2) {
       OfflinePlayer target = Bukkit.getOfflinePlayer(args[1]);
@@ -718,6 +786,35 @@ public final class FallenEconomyPlugin extends JavaPlugin implements Listener, T
       return true;
     }
     sender.sendMessage(color("&cUnknown admin command."));
+    return true;
+  }
+
+  private boolean handleAdminToolsCommand(CommandSender sender, String[] args) {
+    if (args.length < 4 || !args[1].equalsIgnoreCase("give")) {
+      sender.sendMessage(color("&e/feconomy tools give <player> <pickaxe|axe|sellwand> [amount]"));
+      return true;
+    }
+    Player target = Bukkit.getPlayerExact(args[2]);
+    if (target == null) {
+      sender.sendMessage(color("&cPlayer must be online."));
+      return true;
+    }
+    int amount = 1;
+    if (args.length >= 5) {
+      Integer parsedAmount = parseInt(args[4]);
+      if (parsedAmount == null || parsedAmount <= 0 || parsedAmount > 64) {
+        sender.sendMessage(color("&cAmount must be between 1 and 64."));
+        return true;
+      }
+      amount = parsedAmount;
+    }
+    ItemStack tool = createUtilityTool(args[3], amount);
+    if (tool == null) {
+      sender.sendMessage(color("&cUnknown tool. Use pickaxe, axe, or sellwand."));
+      return true;
+    }
+    giveOrDrop(target, tool);
+    sender.sendMessage(color("&aGave &f" + amount + "x " + displayItemName(tool) + " &ato &f" + target.getName() + "&a."));
     return true;
   }
 
@@ -1031,6 +1128,53 @@ public final class FallenEconomyPlugin extends JavaPlugin implements Listener, T
     buyer.sendMessage(color("&aBought &f" + shopItem.item.getAmount() + "x " + displayItemName(shopItem.item) + " &afor &f" + format(shopItem.price) + " " + currencyLabel(shopItem.currency) + "&a."));
   }
 
+  private ItemStack createUtilityTool(String id, int amount) {
+    String normalized = id.toLowerCase(Locale.ROOT);
+    return switch (normalized) {
+      case "pickaxe", "3x3", "3x3pickaxe" -> taggedTool(
+        Material.NETHERITE_PICKAXE,
+        amount,
+        TOOL_PICKAXE,
+        "&bFallen 3x3 Pickaxe",
+        List.of("&7Mines 3x3x1", "&8Fallen Utility Tool")
+      );
+      case "axe", "treecapitator", "treeaxe" -> taggedTool(
+        Material.NETHERITE_AXE,
+        amount,
+        TOOL_AXE,
+        "&bFallen Treecapitator Axe",
+        List.of("&7Breaks connected logs", "&8Fallen Utility Tool")
+      );
+      case "sellwand", "wand", "sell_wand" -> taggedTool(
+        Material.STICK,
+        amount,
+        TOOL_SELL_WAND,
+        "&bFallen Sell Wand",
+        List.of("&7Right-click a container to sell contents", "&7Unlimited uses", "&8Fallen Utility Tool")
+      );
+      default -> null;
+    };
+  }
+
+  private ItemStack taggedTool(Material material, int amount, String toolId, String name, List<String> lore) {
+    ItemStack item = new ItemStack(material, Math.max(1, amount));
+    ItemMeta meta = item.getItemMeta();
+    if (meta != null) {
+      meta.setDisplayName(color(name));
+      meta.setLore(lore.stream().map(FallenEconomyPlugin::color).toList());
+      meta.getPersistentDataContainer().set(toolKey, PersistentDataType.STRING, toolId);
+      item.setItemMeta(meta);
+    }
+    return item;
+  }
+
+  private boolean isUtilityTool(ItemStack item, String toolId) {
+    if (item == null || item.getType().isAir() || !item.hasItemMeta()) return false;
+    ItemMeta meta = item.getItemMeta();
+    if (meta == null) return false;
+    return toolId.equals(meta.getPersistentDataContainer().get(toolKey, PersistentDataType.STRING));
+  }
+
   private void sellHand(Player player) {
     ItemStack hand = player.getInventory().getItemInMainHand();
     if (hand.getType().isAir() || hand.getAmount() <= 0) {
@@ -1092,6 +1236,148 @@ public final class FallenEconomyPlugin extends JavaPlugin implements Listener, T
     double total = amount * unitValue;
     economy.deposit(player, total);
     player.sendMessage(color("&aSold &f" + amount + "x " + niceMaterial(material) + " &afor &f" + format(total) + " " + moneyName + "&a."));
+  }
+
+  private void sellContainerContents(Player player, Inventory inventory) {
+    double total = 0;
+    int soldItems = 0;
+    for (int slot = 0; slot < inventory.getSize(); slot++) {
+      ItemStack item = inventory.getItem(slot);
+      if (item == null || item.getType().isAir() || item.getAmount() <= 0) continue;
+      double unitValue = sellValue(item.getType());
+      if (unitValue <= 0) continue;
+      soldItems += item.getAmount();
+      total += unitValue * item.getAmount();
+      inventory.setItem(slot, null);
+    }
+    if (total <= 0) {
+      player.sendMessage(color("&cThis container has no sellable items."));
+      return;
+    }
+    economy.deposit(player, total);
+    player.sendMessage(color("&aSold &f" + soldItems + " &aitem(s) from the container for &f" + format(total) + " " + moneyName + "&a."));
+  }
+
+  private void handlePickaxeBreak(Player player, Block origin, ItemStack tool) {
+    if (!getConfig().getBoolean("tools.pickaxe.enabled", true)) return;
+    if (!player.hasPermission("falleneconomy.tools.pickaxe")) return;
+    if (!isPickaxeMineable(origin)) return;
+    BlockFace face = lastFaceFor(player, origin);
+    int maxExtra = Math.max(0, getConfig().getInt("tools.pickaxe.max-extra-blocks", 8));
+    int broken = 0;
+    for (Block extra : pickaxeArea(origin, face)) {
+      if (broken >= maxExtra || tool.getType().isAir()) return;
+      if (extra.equals(origin) || !isPickaxeMineable(extra)) continue;
+      if (breakUtilityBlock(player, extra, tool)) broken++;
+    }
+  }
+
+  private List<Block> pickaxeArea(Block origin, BlockFace face) {
+    List<Block> blocks = new ArrayList<>();
+    if (face == BlockFace.UP || face == BlockFace.DOWN) {
+      for (int x = -1; x <= 1; x++) for (int z = -1; z <= 1; z++) blocks.add(origin.getRelative(x, 0, z));
+      return blocks;
+    }
+    if (face == BlockFace.EAST || face == BlockFace.WEST) {
+      for (int y = -1; y <= 1; y++) for (int z = -1; z <= 1; z++) blocks.add(origin.getRelative(0, y, z));
+      return blocks;
+    }
+    for (int x = -1; x <= 1; x++) for (int y = -1; y <= 1; y++) blocks.add(origin.getRelative(x, y, 0));
+    return blocks;
+  }
+
+  private BlockFace lastFaceFor(Player player, Block origin) {
+    LastBlockFace last = lastBlockFaces.get(player.getUniqueId());
+    if (last != null && last.location.equals(origin.getLocation()) && System.currentTimeMillis() - last.createdAt <= 2_500) {
+      return last.face;
+    }
+    double x = Math.abs(player.getLocation().getDirection().getX());
+    double y = Math.abs(player.getLocation().getDirection().getY());
+    double z = Math.abs(player.getLocation().getDirection().getZ());
+    if (y >= x && y >= z) return BlockFace.UP;
+    return x >= z ? BlockFace.EAST : BlockFace.NORTH;
+  }
+
+  private boolean isPickaxeMineable(Block block) {
+    Material material = block.getType();
+    if (material.isAir() || block.isLiquid() || !material.isSolid()) return false;
+    if (!Tag.MINEABLE_PICKAXE.isTagged(material)) return false;
+    if (block.getState() instanceof Container) return false;
+    return !isUnsafeUtilityBlock(material);
+  }
+
+  private boolean isUnsafeUtilityBlock(Material material) {
+    String name = material.name();
+    return material == Material.BEDROCK ||
+      material == Material.BARRIER ||
+      material == Material.STRUCTURE_VOID ||
+      material == Material.END_PORTAL_FRAME ||
+      name.contains("COMMAND_BLOCK") ||
+      name.contains("PORTAL") ||
+      name.contains("SPAWNER");
+  }
+
+  private void handleTreecapitatorBreak(Player player, Block origin, ItemStack tool) {
+    if (!getConfig().getBoolean("tools.axe.enabled", true)) return;
+    if (!player.hasPermission("falleneconomy.tools.axe")) return;
+    if (!isLogBlock(origin.getType())) return;
+    int maxLogs = Math.max(0, getConfig().getInt("tools.axe.max-logs", 128));
+    Material logType = origin.getType();
+    Set<Location> visited = new HashSet<>();
+    Deque<Block> queue = new ArrayDeque<>();
+    visited.add(origin.getLocation());
+    queue.add(origin);
+    int broken = 0;
+    while (!queue.isEmpty() && broken < maxLogs && !tool.getType().isAir()) {
+      Block current = queue.removeFirst();
+      for (BlockFace face : List.of(BlockFace.UP, BlockFace.DOWN, BlockFace.NORTH, BlockFace.SOUTH, BlockFace.EAST, BlockFace.WEST)) {
+        Block next = current.getRelative(face);
+        if (!visited.add(next.getLocation())) continue;
+        if (next.equals(origin) || next.getType() != logType) continue;
+        if (breakUtilityBlock(player, next, tool)) {
+          broken++;
+          queue.add(next);
+        }
+        if (broken >= maxLogs || tool.getType().isAir()) break;
+      }
+    }
+  }
+
+  private boolean isLogBlock(Material material) {
+    String name = material.name();
+    return name.endsWith("_LOG") ||
+      name.endsWith("_WOOD") ||
+      name.endsWith("_STEM") ||
+      name.endsWith("_HYPHAE");
+  }
+
+  private boolean breakUtilityBlock(Player player, Block block, ItemStack tool) {
+    Location location = block.getLocation();
+    BlockBreakEvent synthetic = new BlockBreakEvent(block, player);
+    utilityBreakBlocks.add(location);
+    try {
+      Bukkit.getPluginManager().callEvent(synthetic);
+      if (synthetic.isCancelled()) return false;
+      boolean broken = block.breakNaturally(tool);
+      if (broken) damageUtilityTool(player, tool);
+      return broken;
+    } finally {
+      utilityBreakBlocks.remove(location);
+    }
+  }
+
+  private void damageUtilityTool(Player player, ItemStack tool) {
+    if (player.getGameMode() == GameMode.CREATIVE) return;
+    if (!(tool.getItemMeta() instanceof Damageable damageable)) return;
+    int maxDurability = tool.getType().getMaxDurability();
+    if (maxDurability <= 0) return;
+    int newDamage = damageable.getDamage() + 1;
+    if (newDamage >= maxDurability) {
+      player.getInventory().setItemInMainHand(null);
+      return;
+    }
+    damageable.setDamage(newDamage);
+    tool.setItemMeta(damageable);
   }
 
   private void openBuyMenu(Player player, int page) {
@@ -2089,8 +2375,18 @@ public final class FallenEconomyPlugin extends JavaPlugin implements Listener, T
         .toList();
     }
     if (name.equals("feconomy")) {
-      if (args.length == 1) return filter(List.of("balance", "give", "take", "set", "essence"), args[0]);
+      if (args.length == 1) return filter(List.of("balance", "give", "take", "set", "essence", "tools"), args[0]);
       if (args.length == 2 && args[0].equalsIgnoreCase("essence")) return filter(List.of("balance", "give", "take", "set"), args[1]);
+      if (args.length == 2 && args[0].equalsIgnoreCase("tools")) return filter(List.of("give"), args[1]);
+      if (args.length == 3 && args[0].equalsIgnoreCase("tools") && args[1].equalsIgnoreCase("give")) {
+        return Bukkit.getOnlinePlayers().stream()
+          .map(Player::getName)
+          .filter(playerName -> playerName.toLowerCase(Locale.ROOT).startsWith(args[2].toLowerCase(Locale.ROOT)))
+          .toList();
+      }
+      if (args.length == 4 && args[0].equalsIgnoreCase("tools") && args[1].equalsIgnoreCase("give")) {
+        return filter(List.of("pickaxe", "axe", "sellwand"), args[3]);
+      }
     }
     return List.of();
   }
@@ -2146,6 +2442,18 @@ public final class FallenEconomyPlugin extends JavaPlugin implements Listener, T
       return Integer.parseInt(value);
     } catch (NumberFormatException exception) {
       return null;
+    }
+  }
+
+  private static final class LastBlockFace {
+    private final Location location;
+    private final BlockFace face;
+    private final long createdAt;
+
+    private LastBlockFace(Location location, BlockFace face, long createdAt) {
+      this.location = location;
+      this.face = face;
+      this.createdAt = createdAt;
     }
   }
 

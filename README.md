@@ -10,6 +10,7 @@ Standalone Paper `1.21.11` economy plugin for the Fallen Economy package.
 - force `/shop` player hook to protect the main shop command from plugin conflicts
 - `/essenceshop` separate PlayerPoints Essence shop, starting with spawners
 - `/sell`, `/sell hand`, and `/sell all` native selling into `$`
+- utility tools: 3x3 pickaxe, Treecapitator axe, and Sell Wand
 - `/balance`, `/bal`, `/money`, and `/pay` for `$`
 - `/essence` for PlayerPoints Essence balance
 - `/ah` auction house and `/order` funded buy orders using `$`
