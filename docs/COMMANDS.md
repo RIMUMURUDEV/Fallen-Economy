@@ -4,10 +4,9 @@
 | --- | --- |
 | `/shop` | Open shop categories. |
 | `/shop <end|nether|gear|food>` | Open a normal `$` shop category. |
-| `/shop spawners` | Open the Essence-priced spawner category. |
 | `/shop config add <price> <category>` | Add held item to the normal `$` shop config. |
 | `/essence` | Show PlayerPoints Essence balance. |
-| `/essenceshop` | Open Essence shop. |
+| `/essenceshop` | Open Essence shop, currently spawners. |
 | `/essenceshop config add <price> <category>` | Add held item to Essence shop config. |
 | `/sell` | Open sell GUI. |
 | `/sell hand` | Sell held stack for `$`. |
