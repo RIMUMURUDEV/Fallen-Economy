@@ -39,3 +39,9 @@ Force totems to sell for exactly 500 `$`:
 ```
 
 After changes, regenerate configs or rebuild the plugin package.
+
+## Buy Pricing
+
+Shop buy prices are stored in `server-root/plugins/FallenEconomy/buy-shop.yml` and Essence shop prices are stored in `server-root/plugins/FallenEconomy/essence-shop.yml`.
+
+The configured `price` is the cost of the configured item stack. If an entry is `16x End Stone` for `80`, buying `32x` through the confirmation GUI costs `160`.
