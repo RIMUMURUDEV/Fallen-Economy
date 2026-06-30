@@ -2134,7 +2134,7 @@ public final class FallenEconomyPlugin extends JavaPlugin implements Listener, T
   }
 
   private ItemStack confirmShopIcon(BuyShopItem shopItem, int amount) {
-    ItemStack icon = shopItem.item.clone();
+    ItemStack icon = shopPreviewItem(shopItem.item);
     icon.setAmount(Math.max(1, Math.min(icon.getMaxStackSize(), amount)));
     ItemMeta meta = icon.getItemMeta();
     if (meta != null) {
@@ -2339,7 +2339,7 @@ public final class FallenEconomyPlugin extends JavaPlugin implements Listener, T
   }
 
   private ItemStack buyIcon(BuyShopItem shopItem, boolean configView) {
-    ItemStack icon = shopItem.item.clone();
+    ItemStack icon = shopPreviewItem(shopItem.item);
     if (!configView && shopItem.currency == ShopCurrency.MONEY) {
       icon.setAmount(Math.max(1, icon.getMaxStackSize()));
     }
@@ -2361,6 +2361,19 @@ public final class FallenEconomyPlugin extends JavaPlugin implements Listener, T
       icon.setItemMeta(meta);
     }
     return icon;
+  }
+
+  private ItemStack shopPreviewItem(ItemStack item) {
+    if (item.getType() != Material.SPAWNER) return item.clone();
+    ItemStack preview = new ItemStack(Material.SPAWNER, Math.max(1, Math.min(item.getAmount(), item.getMaxStackSize())));
+    ItemMeta sourceMeta = item.getItemMeta();
+    ItemMeta previewMeta = preview.getItemMeta();
+    if (sourceMeta != null && previewMeta != null) {
+      if (sourceMeta.hasDisplayName()) previewMeta.setDisplayName(sourceMeta.getDisplayName());
+      if (sourceMeta.hasLore()) previewMeta.setLore(sourceMeta.getLore());
+      preview.setItemMeta(previewMeta);
+    }
+    return preview;
   }
 
   private ItemStack sellIcon(Material material, double value) {
